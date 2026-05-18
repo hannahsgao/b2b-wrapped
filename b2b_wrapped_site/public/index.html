@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Bay to Breakers 2026 Wrapped</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="shell">
+    <section class="hero card">
+      <p class="eyebrow">Bay to Breakers 2026</p>
+      <h1>Your race, wrapped.</h1>
+      <p class="subhead">Compare an official finish time or Strava activity against the public results by overall field, gender, age group, and division.</p>
+    </section>
+
+    <section class="card controls">
+      <div class="grid two">
+        <label>
+          Event
+          <select id="event">
+            <option value="12K">12K</option>
+            <option value="15K Breakers Bonus">15K Breakers Bonus</option>
+          </select>
+        </label>
+        <label>
+          Bib lookup <span class="muted">optional</span>
+          <div class="inline">
+            <input id="bib" inputmode="numeric" placeholder="e.g. 2815" />
+            <button id="lookup" type="button">Find</button>
+          </div>
+        </label>
+      </div>
+
+      <div class="grid three">
+        <label>
+          Finish time
+          <input id="time" placeholder="HH:MM:SS or MM:SS" />
+        </label>
+        <label>
+          Gender
+          <select id="gender">
+            <option value="">Prefer not to say</option>
+            <option value="M">M</option>
+            <option value="F">F</option>
+            <option value="NB">NB</option>
+          </select>
+        </label>
+        <label>
+          Age
+          <input id="age" inputmode="numeric" placeholder="e.g. 34" />
+        </label>
+      </div>
+
+      <details>
+        <summary>Using Strava instead of official chip time?</summary>
+        <div class="grid two details-grid">
+          <label>
+            Strava elapsed/moving time
+            <input id="stravaTime" placeholder="HH:MM:SS or MM:SS" />
+          </label>
+          <label>
+            Strava distance, miles
+            <input id="stravaDistance" inputmode="decimal" placeholder="e.g. 7.52" />
+          </label>
+        </div>
+        <p class="muted">When Strava distance is entered, the site normalizes by pace to the official event distance. This is useful for activity GPS drift, but official chip time is still the cleanest comparison.</p>
+      </details>
+
+      <button id="compare" class="primary" type="button">Make my wrapped</button>
+      <p id="dataStatus" class="muted status">Loading data…</p>
+    </section>
+
+    <section id="results" class="results" hidden>
+      <div class="wrapped-title card">
+        <p class="eyebrow">Wrapped scorecard</p>
+        <h2 id="runnerTitle">Your Bay to Breakers story</h2>
+        <p id="runnerSubtitle" class="subhead"></p>
+      </div>
+      <div id="cards" class="cards"></div>
+      <section class="card nearest">
+        <h3>Your finish-time neighbors</h3>
+        <div id="nearest"></div>
+      </section>
+    </section>
+
+    <section class="card footnote">
+      <h3>Data note</h3>
+      <p>This site runs entirely in the browser after loading static JSON generated from public Laurel Timing result pages. It does not call Strava or Laurel from the browser.</p>
+    </section>
+  </main>
+
+  <template id="cardTemplate">
+    <article class="stat-card">
+      <p class="stat-kicker"></p>
+      <h3 class="stat-value"></h3>
+      <p class="stat-copy"></p>
+    </article>
+  </template>
+
+  <script src="app.js"></script>
+</body>
+</html>
