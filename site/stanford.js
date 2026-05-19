@@ -15,6 +15,7 @@ const state = {
   authRedirectUrl: null,
   mobileSummaryText: '',
   mobileSummaryFileBase: 'cardinal-summary',
+  mobileSummaryData: null,
 };
 
 const $ = (id) => document.getElementById(id);
@@ -360,6 +361,194 @@ function setMobileSummaryStatus(message) {
   el.textContent = message || '';
 }
 
+function wrapTextLines(ctx, text, maxWidth) {
+  const clean = String(text || '').replace(/\s+/g, ' ').trim();
+  if (!clean) return [''];
+  const words = clean.split(' ');
+  const lines = [];
+  let line = words.shift() || '';
+  for (const word of words) {
+    const test = `${line} ${word}`;
+    if (ctx.measureText(test).width <= maxWidth) {
+      line = test;
+    } else {
+      lines.push(line);
+      line = word;
+    }
+  }
+  lines.push(line);
+  return lines;
+}
+
+function renderSummaryImageCanvas(summary, theme) {
+  const width = 1080;
+  const padding = 56;
+  const innerWidth = width - (padding * 2);
+  const scratch = document.createElement('canvas');
+  scratch.width = width;
+  scratch.height = 2800;
+  const ctx = scratch.getContext('2d');
+  if (!ctx) throw new Error('Canvas is unavailable in this browser.');
+
+  ctx.fillStyle = theme.bg;
+  ctx.fillRect(0, 0, scratch.width, scratch.height);
+  ctx.textBaseline = 'top';
+
+  let y = 56;
+  const badgeLabel = 'B2B 2026 CARDINAL WRAPPED';
+  ctx.font = '800 20px Archivo, Arial, sans-serif';
+  const badgeWidth = Math.min(innerWidth, Math.ceil(ctx.measureText(badgeLabel).width) + 32);
+  const badgeHeight = 44;
+  ctx.fillStyle = theme.badgeBg || theme.ink;
+  ctx.fillRect(padding, y, badgeWidth, badgeHeight);
+  ctx.fillStyle = theme.badgeText;
+  ctx.fillText(badgeLabel, padding + 16, y + 10);
+  y += badgeHeight + 30;
+
+  ctx.fillStyle = theme.accentPalette?.[0] || theme.accent;
+  ctx.fillRect(padding, y, innerWidth, 6);
+  y += 22;
+
+  ctx.fillStyle = theme.ink;
+  ctx.font = '900 72px Archivo, Arial, sans-serif';
+  for (const line of wrapTextLines(ctx, summary.name, innerWidth)) {
+    ctx.fillText(line, padding, y);
+    y += 78;
+  }
+  y += 6;
+
+  ctx.fillStyle = theme.meta;
+  ctx.font = '700 27px Archivo, Arial, sans-serif';
+  for (const line of wrapTextLines(ctx, `${summary.event} • ${summary.sourceLabel}`, innerWidth)) {
+    ctx.fillText(line, padding, y);
+    y += 34;
+  }
+
+  ctx.fillStyle = theme.ink;
+  ctx.font = '800 34px Archivo, Arial, sans-serif';
+  for (const line of wrapTextLines(ctx, `${summary.time} • ${summary.pace}`, innerWidth)) {
+    ctx.fillText(line, padding, y);
+    y += 42;
+  }
+  for (const line of wrapTextLines(ctx, `${summary.rankText} • ${summary.cardinalPercent}`, innerWidth)) {
+    ctx.fillText(line, padding, y);
+    y += 42;
+  }
+  if (summary.affiliation) {
+    for (const line of wrapTextLines(ctx, `Affiliation: ${summary.affiliation}`, innerWidth)) {
+      ctx.fillText(line, padding, y);
+      y += 42;
+    }
+  }
+  y += 10;
+
+  ctx.fillStyle = theme.meta;
+  ctx.font = '800 22px Archivo, Arial, sans-serif';
+  ctx.fillText('SCORECARD DETAILS', padding, y);
+  y += 34;
+
+  for (let i = 0; i < summary.stats.length; i += 1) {
+    const item = summary.stats[i];
+    const boxX = padding;
+    const boxY = y;
+    const boxW = innerWidth;
+    const accentColor = theme.accentPalette?.[i % theme.accentPalette.length] || theme.accent;
+    const boxPadX = 28;
+    const leftRail = 12;
+
+    ctx.font = '800 20px Archivo, Arial, sans-serif';
+    const kickerLines = wrapTextLines(ctx, item.kicker.toUpperCase(), boxW - (boxPadX * 2) - leftRail);
+    ctx.font = '800 44px Archivo, Arial, sans-serif';
+    const valueLines = wrapTextLines(ctx, item.value, boxW - (boxPadX * 2) - leftRail);
+    ctx.font = '500 26px Archivo, Arial, sans-serif';
+    const copyLines = wrapTextLines(ctx, item.copy, boxW - (boxPadX * 2) - leftRail);
+
+    const boxH = 18 + (kickerLines.length * 24) + 10 + (valueLines.length * 50) + 8 + (copyLines.length * 34) + 18;
+    ctx.fillStyle = theme.card;
+    ctx.fillRect(boxX, boxY, boxW, boxH);
+    ctx.fillStyle = accentColor;
+    ctx.fillRect(boxX, boxY, leftRail, boxH);
+    ctx.strokeStyle = theme.ink;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(boxX, boxY, boxW, boxH);
+
+    let textY = boxY + 18;
+    ctx.fillStyle = theme.meta;
+    ctx.font = '800 20px Archivo, Arial, sans-serif';
+    for (const line of kickerLines) {
+      ctx.fillText(line, boxX + boxPadX + leftRail, textY);
+      textY += 24;
+    }
+
+    ctx.fillStyle = accentColor;
+    ctx.font = '800 44px Archivo, Arial, sans-serif';
+    textY += 10;
+    for (const line of valueLines) {
+      ctx.fillText(line, boxX + boxPadX + leftRail, textY);
+      textY += 50;
+    }
+
+    ctx.fillStyle = theme.copy;
+    ctx.font = '500 26px Archivo, Arial, sans-serif';
+    textY += 8;
+    for (const line of copyLines) {
+      ctx.fillText(line, boxX + boxPadX + leftRail, textY);
+      textY += 34;
+    }
+
+    y += boxH + 16;
+  }
+
+  y += 16;
+  ctx.fillStyle = theme.meta;
+  ctx.font = '700 22px Archivo, Arial, sans-serif';
+  const generatedText = `Generated ${new Date().toLocaleString()}`;
+  for (const line of wrapTextLines(ctx, generatedText, innerWidth)) {
+    ctx.fillText(line, padding, y);
+    y += 30;
+  }
+
+  const finalHeight = Math.max(1200, Math.ceil(y + 56));
+  const output = document.createElement('canvas');
+  output.width = width;
+  output.height = finalHeight;
+  const outCtx = output.getContext('2d');
+  if (!outCtx) throw new Error('Could not finalize image canvas.');
+  outCtx.drawImage(scratch, 0, 0);
+  return output;
+}
+
+function triggerCanvasDownload(canvas, filename) {
+  const fallbackDownload = () => {
+    const dataUrl = canvas.toDataURL('image/png');
+    const link = document.createElement('a');
+    link.href = dataUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  if (canvas.toBlob) {
+    canvas.toBlob((blob) => {
+      if (!blob) {
+        fallbackDownload();
+        return;
+      }
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }, 'image/png');
+    return;
+  }
+  fallbackDownload();
+}
+
 function buildMobileSummaryText(summary) {
   const lines = [
     'Bay to Breakers 2026 - Cardinal Summary Wrapped',
@@ -392,6 +581,7 @@ function renderMobileSummaryWrapped(summary) {
     card.innerHTML = '';
     state.mobileSummaryText = '';
     state.mobileSummaryFileBase = 'cardinal-summary';
+    state.mobileSummaryData = null;
     setMobileSummaryStatus('');
     return;
   }
@@ -417,7 +607,8 @@ function renderMobileSummaryWrapped(summary) {
 
   state.mobileSummaryText = buildMobileSummaryText(summary);
   state.mobileSummaryFileBase = slugify(`${summary.name}-${summary.event}-wrapped`) || 'cardinal-summary';
-  setMobileSummaryStatus('Ready to copy or download.');
+  state.mobileSummaryData = summary;
+  setMobileSummaryStatus('Ready to copy, download text, or download image.');
   section.hidden = false;
 }
 
@@ -462,6 +653,32 @@ function downloadMobileSummary() {
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
   setMobileSummaryStatus(`Downloaded ${link.download}.`);
+}
+
+function downloadMobileSummaryImage() {
+  if (!state.mobileSummaryData) {
+    setMobileSummaryStatus('Generate your scorecard first, then download an image.');
+    return;
+  }
+  try {
+    const canvas = renderSummaryImageCanvas(state.mobileSummaryData, {
+      bg: '#FDF5F2',
+      card: '#FFFFFF',
+      ink: '#0A0A0A',
+      accent: '#8C1515',
+      accentPalette: ['#8C1515', '#B1040E', '#FFD200', '#2E2A25'],
+      meta: '#555555',
+      copy: '#1F1F1F',
+      badgeBg: '#0A0A0A',
+      badgeText: '#FFD200',
+    });
+    const fileName = `${state.mobileSummaryFileBase || 'cardinal-summary'}-summary.png`;
+    triggerCanvasDownload(canvas, fileName);
+    setMobileSummaryStatus(`Downloaded ${fileName}.`);
+  } catch (err) {
+    console.error(err);
+    setMobileSummaryStatus(`Could not generate image: ${err.message}`);
+  }
 }
 
 function renderComparison(you, all) {
@@ -877,5 +1094,6 @@ $('copyMobileSummary').addEventListener('click', () => {
   });
 });
 $('downloadMobileSummary').addEventListener('click', downloadMobileSummary);
+$('downloadMobileSummaryImage').addEventListener('click', downloadMobileSummaryImage);
 
 boot();
