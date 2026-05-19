@@ -3,6 +3,9 @@ window.B2B_AUTH_CONFIG = {
   supabaseUrl: 'https://YOUR_PROJECT_REF.supabase.co',
   // Supabase anon public key (safe for client-side use)
   supabaseAnonKey: 'YOUR_SUPABASE_ANON_KEY',
+  // Optional explicit magic-link callback URL. If omitted, defaults to
+  // `${window.location.origin}/stanford.html`.
+  // emailRedirectUrl: 'https://b2bwrapped.xyz/stanford.html',
   // Allowed email domains for Stanford-only access
   allowedEmailDomains: ['stanford.edu', 'alumni.stanford.edu'],
   // Race season used in DB unique constraints

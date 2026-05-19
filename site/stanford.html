@@ -190,6 +190,19 @@
 
       <div id="cards" class="cards"></div>
 
+      <section id="mobileSummaryWrapped" class="mobile-summary-wrapped" hidden aria-labelledby="mobile-summary-heading">
+        <h3 id="mobile-summary-heading" class="section-heading minor">
+          <span class="section-num">§ IV</span>
+          <span class="section-name">Summary wrapped</span>
+        </h3>
+        <article id="mobileSummaryCard" class="mobile-summary-card"></article>
+        <div class="mobile-summary-actions">
+          <button id="copyMobileSummary" class="ghost" type="button">Copy summary</button>
+          <button id="downloadMobileSummary" class="ghost" type="button">Download summary</button>
+        </div>
+        <p id="mobileSummaryStatus" class="status" aria-live="polite"></p>
+      </section>
+
     </section>
 
     <div class="lane-rule" aria-hidden="true"></div>
@@ -243,7 +256,7 @@
   </template>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="auth-config.js"></script>
+  <script src="auth-config.public.js"></script>
   <script src="stanford.js"></script>
 </body>
 </html>

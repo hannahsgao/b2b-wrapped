@@ -12,6 +12,9 @@ const state = {
   supabase: null,
   raceSeason: 2026,
   allowedEmailDomains: ['stanford.edu', 'alumni.stanford.edu'],
+  authRedirectUrl: null,
+  mobileSummaryText: '',
+  mobileSummaryFileBase: 'cardinal-summary',
 };
 
 const $ = (id) => document.getElementById(id);
@@ -113,6 +116,11 @@ function setAuthedVisibility(isAuthed) {
   const content = $('authedContent');
   if (gate) gate.hidden = isAuthed;
   if (content) content.hidden = !isAuthed;
+}
+
+function getMagicLinkRedirectUrl() {
+  if (state.authRedirectUrl) return state.authRedirectUrl;
+  return `${window.location.origin}/stanford.html`;
 }
 
 async function loadStaticData() {
@@ -338,6 +346,124 @@ function ordinal(n) {
   return n + (suffixes[(v - 20) % 10] || suffixes[v] || suffixes[0]);
 }
 
+function slugify(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 48);
+}
+
+function setMobileSummaryStatus(message) {
+  const el = $('mobileSummaryStatus');
+  if (!el) return;
+  el.textContent = message || '';
+}
+
+function buildMobileSummaryText(summary) {
+  const lines = [
+    'Bay to Breakers 2026 - Cardinal Summary Wrapped',
+    `Name: ${summary.name}`,
+    `Affiliation: ${summary.affiliation || '-'}`,
+    `Event: ${summary.event}`,
+    `Source: ${summary.sourceLabel}`,
+    `Time: ${summary.time}`,
+    `Pace: ${summary.pace}`,
+    `Cardinal rank: ${summary.rankText}`,
+    `Ahead of Cardinals: ${summary.cardinalPercent}`,
+    '',
+    'Scorecard details:',
+  ];
+  for (const item of summary.stats) {
+    lines.push(`- ${item.kicker}: ${item.value}`);
+    lines.push(`  ${item.copy}`);
+  }
+  lines.push('', `Generated: ${new Date().toLocaleString()}`);
+  return lines.join('\n');
+}
+
+function renderMobileSummaryWrapped(summary) {
+  const section = $('mobileSummaryWrapped');
+  const card = $('mobileSummaryCard');
+  if (!section || !card) return;
+
+  if (!summary) {
+    section.hidden = true;
+    card.innerHTML = '';
+    state.mobileSummaryText = '';
+    state.mobileSummaryFileBase = 'cardinal-summary';
+    setMobileSummaryStatus('');
+    return;
+  }
+
+  const rows = summary.stats.map((item) => `
+    <li class="mobile-summary-item">
+      <p class="mobile-summary-item-kicker">${escapeHtml(item.kicker)}</p>
+      <p class="mobile-summary-item-value">${escapeHtml(item.value)}</p>
+      <p class="mobile-summary-item-copy">${escapeHtml(item.copy)}</p>
+    </li>
+  `).join('');
+
+  card.innerHTML = `
+    <header class="mobile-summary-head">
+      <p class="mobile-summary-title">${escapeHtml(summary.name)}</p>
+      <p class="mobile-summary-subtitle">${escapeHtml(summary.event)} · ${escapeHtml(summary.sourceLabel)}</p>
+      <p class="mobile-summary-time">${escapeHtml(summary.time)} · ${escapeHtml(summary.pace)}</p>
+      <p class="mobile-summary-rank">${escapeHtml(summary.rankText)} · ${escapeHtml(summary.cardinalPercent)}</p>
+      <p class="mobile-summary-affiliation">${escapeHtml(summary.affiliation ? `Affiliation: ${summary.affiliation}` : 'Affiliation: —')}</p>
+    </header>
+    <ol class="mobile-summary-list">${rows}</ol>
+  `;
+
+  state.mobileSummaryText = buildMobileSummaryText(summary);
+  state.mobileSummaryFileBase = slugify(`${summary.name}-${summary.event}-wrapped`) || 'cardinal-summary';
+  setMobileSummaryStatus('Ready to copy or download.');
+  section.hidden = false;
+}
+
+async function copyMobileSummary() {
+  if (!state.mobileSummaryText) {
+    setMobileSummaryStatus('Generate your scorecard first, then copy.');
+    return;
+  }
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(state.mobileSummaryText);
+    } else {
+      const textarea = document.createElement('textarea');
+      textarea.value = state.mobileSummaryText;
+      textarea.setAttribute('readonly', '');
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+    }
+    setMobileSummaryStatus('Summary copied to clipboard.');
+  } catch (err) {
+    console.error(err);
+    setMobileSummaryStatus('Could not copy. Try download instead.');
+  }
+}
+
+function downloadMobileSummary() {
+  if (!state.mobileSummaryText) {
+    setMobileSummaryStatus('Generate your scorecard first, then download.');
+    return;
+  }
+  const blob = new Blob([state.mobileSummaryText], { type: 'text/plain;charset=utf-8' });
+  const link = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+  link.href = url;
+  link.download = `${state.mobileSummaryFileBase || 'cardinal-summary'}.txt`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+  setMobileSummaryStatus(`Downloaded ${link.download}.`);
+}
+
 function renderComparison(you, all) {
   const event = you.event;
   const inEvent = all.filter((e) => e.event === event).sort((a, b) => a.chip_seconds - b.chip_seconds);
@@ -345,56 +471,74 @@ function renderComparison(you, all) {
   const total = inEvent.length;
   const beatN = Math.max(0, total - myRank);
   const beatPct = total > 1 ? (beatN / (total - 1)) * 100 : 100;
+  const rankText = total > 1 ? `${ordinal(myRank)} of ${total}` : '1st of 1';
+  const sourceLabel = you.source === 'strava' ? 'Strava-normalized' : (you.source === 'official' ? 'official chip time' : 'self-reported');
 
   $('results').hidden = false;
   $('runnerTitle').textContent = `${formatTime(you.chip_seconds)} — ${descriptor(beatPct)}`;
-  const srcLabel = you.source === 'strava' ? 'Strava-normalized' : (you.source === 'official' ? 'official chip time' : 'self-reported');
-  $('runnerSubtitle').textContent = `${event} · ${srcLabel} · ${formatPace(you.chip_seconds, you.distance_miles)}`;
+  $('runnerSubtitle').textContent = `${event} · ${sourceLabel} · ${formatPace(you.chip_seconds, you.distance_miles)}`;
 
   const cards = $('cards');
   cards.innerHTML = '';
+  const summaryStats = [];
+  const appendStat = (kicker, value, copy) => {
+    cards.appendChild(card(kicker, value, copy));
+    summaryStats.push({ kicker, value, copy });
+  };
 
-  cards.appendChild(card(
+  appendStat(
     'Cardinal rank',
     total > 1 ? `${ordinal(myRank)}` : '1st',
     total > 1
       ? `Out of ${total} Cardinal ${event} entries on the board. You beat ${beatN}.`
       : `Sole Cardinal ${event} entry so far — flex the bib.`
-  ));
+  );
 
-  cards.appendChild(card(
+  appendStat(
     'Cardinal %',
     `${beatPct.toFixed(0)}%`,
     total > 1
       ? `Ahead of ${beatPct.toFixed(0)}% of Stanford folks in ${event}.`
       : 'Add some friends to the board to fill this in.'
-  ));
+  );
 
   const fs = fieldStats(event, you.chip_seconds);
   if (fs) {
-    cards.appendChild(card(
+    appendStat(
       'Full field %',
       `${fs.beatPct.toFixed(1)}%`,
       `Ahead of ${fs.slower.toLocaleString()} of ${fs.count.toLocaleString()} total ${event} finishers (Laurel Timing).`
-    ));
+    );
 
     const delta = you.chip_seconds - fs.median;
     const deltaText = delta === 0
       ? 'exactly the median'
       : (delta < 0 ? `${formatTime(-delta)} faster than median` : `${formatTime(delta)} slower than median`);
-    cards.appendChild(card('Vs field median', deltaText, `Median ${event} finish was ${fs.medianText}.`));
+    appendStat('Vs field median', deltaText, `Median ${event} finish was ${fs.medianText}.`);
   }
 
-  cards.appendChild(card(
+  appendStat(
     'Pace',
     formatPace(you.chip_seconds, you.distance_miles),
     `Official distance used here: ${you.distance_miles} mi. GPS routes can read longer or shorter.`
-  ));
+  );
 
   if (inEvent.length > 1) {
     const median = inEvent[Math.floor(inEvent.length / 2)];
-    cards.appendChild(card('Cardinal median', formatTime(median.chip_seconds), `Median Cardinal ${event} time across ${inEvent.length} entries.`));
+    appendStat('Cardinal median', formatTime(median.chip_seconds), `Median Cardinal ${event} time across ${inEvent.length} entries.`);
   }
+
+  renderMobileSummaryWrapped({
+    name: you.name || 'Anonymous',
+    affiliation: you.affiliation || '',
+    event,
+    sourceLabel,
+    time: formatTime(you.chip_seconds),
+    pace: formatPace(you.chip_seconds, you.distance_miles),
+    rankText,
+    cardinalPercent: `${beatPct.toFixed(0)}% ahead of Cardinals`,
+    stats: summaryStats,
+  });
 }
 
 function populateFormFromEntry(entry) {
@@ -539,6 +683,7 @@ async function clearCurrentEventEntry() {
     if ($(id)) $(id).value = '';
   });
   $('results').hidden = true;
+  renderMobileSummaryWrapped(null);
 
   await loadDbEntries();
   renderBoard();
@@ -559,8 +704,11 @@ async function sendMagicLink() {
 
   setAuthStatus('Sending magic link…', 'warning');
 
-  const redirectTo = `${window.location.origin}${window.location.pathname}`;
-  const { error } = await state.supabase.auth.signInWithOtp({
+  const redirectTo = getMagicLinkRedirectUrl();
+  const isRedirectError = (message) => /redirect|not allowed|invalid/i.test(String(message || ''));
+  const isRateLimitError = (message) => /rate.?limit|too many requests|email rate limit exceeded/i.test(String(message || ''));
+  const isEmailSendError = (message) => /error sending magic link email|error sending email|smtp|mailer/i.test(String(message || ''));
+  let { error } = await state.supabase.auth.signInWithOtp({
     email,
     options: {
       emailRedirectTo: redirectTo,
@@ -568,9 +716,26 @@ async function sendMagicLink() {
     },
   });
 
+  // If redirect URLs are misconfigured in Supabase, retry without override so
+  // Supabase can fall back to its project-level Site URL.
+  if (error && isRedirectError(error.message)) {
+    ({ error } = await state.supabase.auth.signInWithOtp({
+      email,
+      options: { shouldCreateUser: true },
+    }));
+  }
+
   if (error) {
     console.error(error);
-    setAuthStatus(`Sign-in failed: ${error.message}`, 'error');
+    if (isRateLimitError(error.message)) {
+      setAuthStatus('Too many sign-in emails sent. Wait a minute, then try again.', 'error');
+    } else if (isEmailSendError(error.message)) {
+      setAuthStatus('Sign-in email could not be sent. Check Supabase SMTP (Resend host/user/password + verified sender domain).', 'error');
+    } else if (isRedirectError(error.message)) {
+      setAuthStatus(`Sign-in failed: ${error.message}. Check Supabase redirect URLs for this domain.`, 'error');
+    } else {
+      setAuthStatus(`Sign-in failed: ${error.message}`, 'error');
+    }
     return;
   }
 
@@ -598,6 +763,7 @@ async function handleSession(session) {
     state.session = null;
     setAuthedVisibility(false);
     setAuthStatus('Sign in with a Stanford email to continue.', 'warning');
+    renderMobileSummaryWrapped(null);
     return;
   }
 
@@ -621,14 +787,19 @@ async function handleSession(session) {
   const all = buildEntries();
   const you = all.find((entry) => entry.isYou);
   if (you) renderComparison(you, all);
+  else {
+    $('results').hidden = true;
+    renderMobileSummaryWrapped(null);
+  }
 }
 
 function loadConfig() {
   const cfg = window.B2B_AUTH_CONFIG || {};
   const supabaseUrl = String(cfg.supabaseUrl || '').trim();
   const supabaseAnonKey = String(cfg.supabaseAnonKey || '').trim();
+  const emailRedirectUrl = String(cfg.emailRedirectUrl || '').trim();
   if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error('Missing B2B_AUTH_CONFIG.supabaseUrl or supabaseAnonKey in site/auth-config.js');
+    throw new Error('Missing B2B_AUTH_CONFIG.supabaseUrl or supabaseAnonKey in auth config script');
   }
   if (!window.supabase || typeof window.supabase.createClient !== 'function') {
     throw new Error('Supabase client library failed to load.');
@@ -637,6 +808,13 @@ function loadConfig() {
     ? cfg.allowedEmailDomains.map((d) => String(d).toLowerCase())
     : state.allowedEmailDomains;
   state.raceSeason = Number.isFinite(Number(cfg.raceSeason)) ? Number(cfg.raceSeason) : state.raceSeason;
+  if (emailRedirectUrl) {
+    try {
+      state.authRedirectUrl = new URL(emailRedirectUrl, window.location.origin).toString();
+    } catch {
+      throw new Error('Invalid B2B_AUTH_CONFIG.emailRedirectUrl');
+    }
+  }
   return { supabaseUrl, supabaseAnonKey };
 }
 
@@ -692,5 +870,12 @@ $('clearLocal').addEventListener('click', () => {
     alert(`Could not remove entry: ${err.message}`);
   });
 });
+$('copyMobileSummary').addEventListener('click', () => {
+  copyMobileSummary().catch((err) => {
+    console.error(err);
+    setMobileSummaryStatus(`Could not copy summary: ${err.message}`);
+  });
+});
+$('downloadMobileSummary').addEventListener('click', downloadMobileSummary);
 
 boot();

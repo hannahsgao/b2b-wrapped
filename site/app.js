@@ -2,6 +2,8 @@ const state = {
   summary: null,
   results: null,
   loaded: false,
+  mobileSummaryText: '',
+  mobileSummaryFileBase: 'b2b-summary',
 };
 
 const $ = (id) => document.getElementById(id);
@@ -104,6 +106,122 @@ function card(kicker, value, copy) {
   node.querySelector('.stat-value').textContent = value;
   node.querySelector('.stat-copy').textContent = copy;
   return node;
+}
+
+function slugify(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 48);
+}
+
+function setMobileSummaryStatus(message) {
+  const el = $('mobileSummaryStatus');
+  if (!el) return;
+  el.textContent = message || '';
+}
+
+function buildMobileSummaryText(summary) {
+  const lines = [
+    'Bay to Breakers 2026 - Summary Wrapped',
+    `Runner: ${summary.runnerLabel}`,
+    `Event: ${summary.event}`,
+    `Source: ${summary.sourceLabel}`,
+    `Finish time: ${summary.time}`,
+    `Pace: ${summary.pace}`,
+    `Overall rank estimate: ${summary.overallRank}`,
+    `Overall field percentile: ${summary.overallPercentile}`,
+    '',
+    'Scorecard details:',
+  ];
+  for (const item of summary.stats) {
+    lines.push(`- ${item.kicker}: ${item.value}`);
+    lines.push(`  ${item.copy}`);
+  }
+  lines.push('', `Generated: ${new Date().toLocaleString()}`);
+  return lines.join('\n');
+}
+
+function renderMobileSummaryWrapped(summary) {
+  const section = $('mobileSummaryWrapped');
+  const card = $('mobileSummaryCard');
+  if (!section || !card) return;
+
+  if (!summary) {
+    section.hidden = true;
+    card.innerHTML = '';
+    state.mobileSummaryText = '';
+    state.mobileSummaryFileBase = 'b2b-summary';
+    setMobileSummaryStatus('');
+    return;
+  }
+
+  const rows = summary.stats.map((item) => `
+    <li class="mobile-summary-item">
+      <p class="mobile-summary-item-kicker">${escapeHtml(item.kicker)}</p>
+      <p class="mobile-summary-item-value">${escapeHtml(item.value)}</p>
+      <p class="mobile-summary-item-copy">${escapeHtml(item.copy)}</p>
+    </li>
+  `).join('');
+
+  card.innerHTML = `
+    <header class="mobile-summary-head">
+      <p class="mobile-summary-title">${escapeHtml(summary.runnerLabel)}</p>
+      <p class="mobile-summary-subtitle">${escapeHtml(summary.event)} · ${escapeHtml(summary.sourceLabel)}</p>
+      <p class="mobile-summary-time">${escapeHtml(summary.time)} · ${escapeHtml(summary.pace)}</p>
+      <p class="mobile-summary-rank">${escapeHtml(summary.overallRank)} · ${escapeHtml(summary.overallPercentile)}</p>
+    </header>
+    <ol class="mobile-summary-list">${rows}</ol>
+  `;
+
+  state.mobileSummaryText = buildMobileSummaryText(summary);
+  state.mobileSummaryFileBase = slugify(`${summary.runnerLabel}-${summary.event}-wrapped`) || 'b2b-summary';
+  setMobileSummaryStatus('Ready to copy or download.');
+  section.hidden = false;
+}
+
+async function copyMobileSummary() {
+  if (!state.mobileSummaryText) {
+    setMobileSummaryStatus('Generate your wrapped first, then copy.');
+    return;
+  }
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(state.mobileSummaryText);
+    } else {
+      const textarea = document.createElement('textarea');
+      textarea.value = state.mobileSummaryText;
+      textarea.setAttribute('readonly', '');
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+    }
+    setMobileSummaryStatus('Summary copied to clipboard.');
+  } catch (err) {
+    console.error(err);
+    setMobileSummaryStatus('Could not copy. Try download instead.');
+  }
+}
+
+function downloadMobileSummary() {
+  if (!state.mobileSummaryText) {
+    setMobileSummaryStatus('Generate your wrapped first, then download.');
+    return;
+  }
+  const blob = new Blob([state.mobileSummaryText], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `${state.mobileSummaryFileBase || 'b2b-summary'}.txt`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+  setMobileSummaryStatus(`Downloaded ${link.download}.`);
 }
 
 function normalizedFirstName(value) {
@@ -401,72 +519,90 @@ function compare() {
 
   const cards = $('cards');
   cards.innerHTML = '';
-  cards.appendChild(card(
+  const summaryStats = [];
+  const appendStat = (kicker, value, copy) => {
+    cards.appendChild(card(kicker, value, copy));
+    summaryStats.push({ kicker, value, copy });
+  };
+
+  appendStat(
     'Overall field',
     `${overall.beatPct.toFixed(1)}%`,
     `You beat about ${overall.slower.toLocaleString()} of ${overall.count.toLocaleString()} ${event} finishers. Estimated place: ${overall.rank.toLocaleString()}.`
-  ));
+  );
 
   if (genderStats) {
-    cards.appendChild(card(
+    appendStat(
       'Gender field',
       `${genderStats.beatPct.toFixed(1)}%`,
       `Among ${gender} runners, you beat about ${genderStats.slower.toLocaleString()} of ${genderStats.count.toLocaleString()}.`
-    ));
+    );
   }
 
   if (ageStats) {
-    cards.appendChild(card(
+    appendStat(
       'Age group',
       `${ageStats.beatPct.toFixed(1)}%`,
       `In ${ag}, you beat about ${ageStats.slower.toLocaleString()} of ${ageStats.count.toLocaleString()} runners.`
-    ));
+    );
   }
 
   if (comboStats) {
-    cards.appendChild(card(
+    appendStat(
       'Gender + age',
       `${comboStats.beatPct.toFixed(1)}%`,
       `In ${gender} ${ag}, estimated rank ${comboStats.rank.toLocaleString()} of ${comboStats.count.toLocaleString()}.`
-    ));
+    );
   }
 
   const median = overall.group.p50_seconds;
-  cards.appendChild(card(
+  appendStat(
     'Vs median',
     signedDelta(seconds - median),
     `Median ${event} finish was ${overall.group.p50}. Your pace: ${formatPace(seconds, eventMiles)}.`
-  ));
+  );
 
-  cards.appendChild(card(
+  appendStat(
     'Finish pace',
     formatPace(seconds, eventMiles),
     `Official distance used here: ${eventMiles} miles. GPS routes can read longer or shorter.`
-  ));
+  );
 
   const nameStats = sameFirstNameStats(event, firstName, seconds);
   if (nameStats) {
     const sameNameCopy = nameStats.count === 1
       ? `You were the only ${nameStats.firstName} in the public ${event} results.`
       : `Among ${nameStats.count.toLocaleString()} ${nameStats.firstName}s in the ${event}, you beat about ${nameStats.slower.toLocaleString()} and landed in the top ${(100 - nameStats.beatPct).toFixed(1)}%.`;
-    cards.appendChild(card(
+    appendStat(
       'Name twins',
       nameStats.count === 1 ? `Only ${nameStats.firstName}` : `#${nameStats.rank.toLocaleString()} of ${nameStats.count.toLocaleString()}`,
       sameNameCopy
-    ));
+    );
   }
 
   if (runner && runner.teams && runner.teams.length) {
     const team = runner.teams[0];
-    cards.appendChild(card(
+    appendStat(
       'Centipede team',
       team.team_name || 'Team result',
       team.team_rank ? `Team rank ${team.team_rank}; team average ${team.team_avg_chip_time || '—'}.` : `Team average ${team.team_avg_chip_time || '—'}.`
-    ));
+    );
   }
 
   const bibRaw = $('bib').value.trim();
   const bibForGraphic = bibRaw && /^\d+$/.test(bibRaw) ? `#${bibRaw}` : 'YOU';
+  const runnerLabel = runner?.name || firstName || (bibRaw ? `Bib ${bibRaw}` : 'Runner');
+  renderMobileSummaryWrapped({
+    runnerLabel,
+    event,
+    sourceLabel,
+    time: formatTime(seconds),
+    pace: formatPace(seconds, eventMiles),
+    overallRank: `${overall.rank.toLocaleString()} of ${overall.count.toLocaleString()}`,
+    overallPercentile: `${overall.beatPct.toFixed(1)}% ahead of field`,
+    stats: summaryStats,
+  });
+
   renderFieldGraphic(event, seconds, overall, bibForGraphic);
   renderNearest(event, seconds);
   window.scrollTo({ top: $('results').offsetTop - 20, behavior: 'smooth' });
@@ -519,4 +655,11 @@ async function loadData() {
 
 $('compare').addEventListener('click', compare);
 $('lookup').addEventListener('click', lookupBib);
+$('copyMobileSummary').addEventListener('click', () => {
+  copyMobileSummary().catch((err) => {
+    console.error(err);
+    setMobileSummaryStatus(`Could not copy summary: ${err.message}`);
+  });
+});
+$('downloadMobileSummary').addEventListener('click', downloadMobileSummary);
 loadData();
