@@ -1107,7 +1107,10 @@ select {
 .auth-status.warning { color: #7A5A00; }
 
 .mobile-summary-wrapped {
-  display: none;
+  display: grid;
+  gap: 14px;
+  margin: 24px 0 8px;
+  max-width: 720px;
 }
 .mobile-summary-card {
   background: var(--paper);
@@ -1288,9 +1291,9 @@ select {
   .inline input { border-right: var(--hair-thin); }
   .ghost { padding: 12px 22px; }
   .mobile-summary-wrapped {
-    display: grid;
     gap: 10px;
     margin: 6px 0 4px;
+    max-width: none;
   }
   .mobile-summary-title {
     font-size: 22px;
