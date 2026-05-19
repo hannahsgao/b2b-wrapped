@@ -11,6 +11,12 @@ __pycache__/
 # The deployable, minimized data lives in site/data/ and IS tracked.
 data_pipeline/raw/
 
+# Pipeline run logs — ephemeral.
+data_pipeline/logs/
+
+# Local Supabase config — copy auth-config.example.js to auth-config.js to deploy.
+site/auth-config.js
+
 # OS / editor
 .DS_Store
 .idea/
@@ -18,3 +24,4 @@ data_pipeline/raw/
 
 # Old structure (replaced by data_pipeline/ + site/)
 b2b_wrapped_site/
+.vercel

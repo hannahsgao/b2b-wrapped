@@ -4,203 +4,11 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Bay to Breakers 2026 — Cardinal Edition</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&display=swap" />
   <link rel="stylesheet" href="styles.css" />
-  <style>
-    :root[data-theme="cardinal"] {
-      --teal:       #F4E9E1;
-      --teal-dark:  #8C1515;
-      --pink:       #8C1515;
-      --pink-2:     #6E0F11;
-      --yellow:     #FFD200;
-    }
-    :root[data-theme="cardinal"] body { background: #F4E9E1; }
-    :root[data-theme="cardinal"] .cards .stat-card:nth-child(1) .stat-value { color: #8C1515; }
-    :root[data-theme="cardinal"] .cards .stat-card:nth-child(2) .stat-value { color: #6E0F11; }
-    :root[data-theme="cardinal"] .cards .stat-card:nth-child(3) .stat-value { color: #2E2A25; }
-    :root[data-theme="cardinal"] .cards .stat-card:nth-child(4) .stat-value { color: #8C1515; }
-    :root[data-theme="cardinal"] .cards .stat-card:nth-child(5) .stat-value { color: #6E0F11; }
-    :root[data-theme="cardinal"] .cards .stat-card:nth-child(6) .stat-value { color: #2E2A25; }
-
-    .crest {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 4px 12px;
-      background: #8C1515;
-      color: #fff;
-      font-size: 11px;
-      font-weight: 800;
-      letter-spacing: 0.22em;
-      text-transform: uppercase;
-    }
-    .crest::before {
-      content: "";
-      width: 8px;
-      height: 8px;
-      background: #FFD200;
-      border: 1.4px solid #fff;
-      transform: rotate(45deg);
-    }
-
-    .leaderboard {
-      background: var(--paper);
-      border: var(--hair);
-      padding: 4px;
-      margin-top: 16px;
-    }
-    .leaderboard-toolbar {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      padding: 16px 18px 12px;
-      border-bottom: var(--hair-soft);
-    }
-    .tabs {
-      display: inline-flex;
-      gap: 0;
-      border: var(--hair-thin);
-    }
-    .tab {
-      padding: 10px 16px;
-      font-size: 11px;
-      font-weight: 800;
-      letter-spacing: 0.14em;
-      text-transform: uppercase;
-      background: var(--paper);
-      color: var(--ink);
-      border-right: var(--hair-thin);
-    }
-    .tab:last-child { border-right: 0; }
-    .tab[aria-pressed="true"] { background: #8C1515; color: #fff; }
-    .leaderboard-meta {
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 0.14em;
-      text-transform: uppercase;
-      color: var(--gray-500);
-    }
-    .leaderboard table {
-      width: 100%;
-      border-collapse: collapse;
-      margin: 0;
-    }
-    .leaderboard thead th {
-      text-align: left;
-      padding: 14px 18px;
-      background: var(--ink);
-      color: #FFD200;
-      font-size: 10px;
-      font-weight: 800;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-    }
-    .leaderboard tbody td {
-      padding: 14px 18px;
-      border-bottom: var(--hair-soft);
-      font-size: 14px;
-      font-weight: 500;
-      color: var(--ink);
-    }
-    .leaderboard tbody tr:last-child td { border-bottom: 0; }
-    .leaderboard tbody td.rank {
-      font-variant-numeric: tabular-nums;
-      font-weight: 800;
-      width: 56px;
-    }
-    .leaderboard tbody td.time {
-      font-variant-numeric: tabular-nums;
-      font-weight: 700;
-    }
-    .leaderboard tbody td.pace,
-    .leaderboard tbody td.event,
-    .leaderboard tbody td.aff,
-    .leaderboard tbody td.src {
-      color: var(--gray-500);
-      font-variant-numeric: tabular-nums;
-      font-weight: 600;
-    }
-    .leaderboard tbody tr.you td {
-      background: #FFF7D1;
-    }
-    .leaderboard tbody tr.you td.rank::before {
-      content: "★ ";
-      color: #8C1515;
-    }
-    .leaderboard tbody tr:hover td { background: var(--gray-100); }
-    .leaderboard tbody tr.you:hover td { background: #FFEFA8; }
-
-    .src-pill {
-      display: inline-block;
-      padding: 2px 8px;
-      font-size: 10px;
-      font-weight: 800;
-      letter-spacing: 0.14em;
-      text-transform: uppercase;
-      border: 1px solid var(--ink);
-    }
-    .src-pill.official { background: #8C1515; color: #fff; border-color: #8C1515; }
-    .src-pill.strava { background: #FFD200; color: #0A0A0A; border-color: #0A0A0A; }
-    .src-pill.self { background: #fff; color: #0A0A0A; }
-
-    .leaderboard-empty {
-      padding: 32px 18px;
-      text-align: center;
-      color: var(--gray-500);
-      font-size: 13px;
-      font-weight: 500;
-    }
-
-    .submit-actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
-      margin-top: 12px;
-    }
-    .submit-actions .ghost { padding: 10px 16px; }
-    .you-banner {
-      margin: 16px 0 0;
-      padding: 14px 18px;
-      background: #FFD200;
-      border: var(--hair-thin);
-      font-size: 13px;
-      font-weight: 700;
-      color: var(--ink);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 12px;
-    }
-    .you-banner .clear {
-      font-size: 11px;
-      font-weight: 800;
-      letter-spacing: 0.14em;
-      text-transform: uppercase;
-      text-decoration: underline;
-      cursor: pointer;
-    }
-
-    .nav-back {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      margin-top: 12px;
-      font-size: 11px;
-      font-weight: 800;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      color: #fff;
-      text-decoration: none;
-    }
-    .nav-back:hover { color: #FFD200; }
-    .auth-status.error { color: #8C1515; }
-    .auth-status.success { color: #1E6E3B; }
-    .auth-status.warning { color: #7A5A00; }
-  </style>
 </head>
 <body>
   <div class="grain" aria-hidden="true"></div>
@@ -217,17 +25,22 @@
   <main class="paper">
 
     <section class="hero">
-      <p class="crest">Stanford University</p>
-      <h1 class="display">
-        Cardinal,<br/>
-        <em>in numbers.</em>
-      </h1>
-      <p class="lede">
-        A leaderboard for Stanford students, alumni, and friends who showed up to
-        Bay to Breakers — whether you registered, or jumped in post-ksig float after 
-        borging and finishing all 12K only to be
-        (tragically) denied a medal at the end. (ask me how i know.)
-      </p>
+      <div class="hero-text">
+        <p class="crest">Stanford University</p>
+        <h1 class="display">
+          Cardinal,<br/>
+          <em>in numbers.</em>
+        </h1>
+        <p class="lede">
+          A leaderboard for Stanford students, alumni, and friends who showed up to
+          Bay to Breakers — whether you registered, or jumped in post-ksig float after
+          borging and finishing all 12K only to be
+          (tragically) denied a medal at the end. (ask me how i know.)
+        </p>
+        <p class="micro hero-backline">
+          <a href="index.html" class="hero-back-link">view your stats against all racers here</a>
+        </p>
+      </div>
     </section>
 
     <div class="lane-rule short" aria-hidden="true"></div>
