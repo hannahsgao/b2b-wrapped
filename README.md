@@ -160,6 +160,7 @@ The included frontend computes:
 - gender + age-group beat percentage
 - time vs. event median
 - pace
+- rank among finishers with the same first name
 - nearest public finishers by time
 - team card if the bib appears in team data
 
@@ -169,4 +170,3 @@ If you successfully capture split data from public split pages, you can add:
 - fastest mile / strongest segment
 - negative split card
 - “you passed X people after Hayes Hill”
-

@@ -903,13 +903,14 @@ select {
   }
   .masthead-inner {
     grid-template-columns: 1fr;
-    gap: 8px;
+    gap: 6px;
     text-align: center;
-    padding: 12px 18px;
+    padding: 9px 18px;
   }
   .dateline.align-right { text-align: center; }
   .masthead-mark { font-size: 20px; }
   .hero { padding: 48px 0 22px; }
+  .hero-text { gap: 14px; }
   .form-bay { padding: 24px 18px 28px; }
   .fields { grid-template-columns: 1fr; gap: 20px; }
   .field.span-2 { grid-column: span 1; }

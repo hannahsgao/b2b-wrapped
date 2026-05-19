@@ -26,6 +26,11 @@ create unique index if not exists stanford_entries_user_event_season_uniq
 create index if not exists stanford_entries_event_idx
   on public.stanford_leaderboard_entries (event, season, chip_seconds);
 
+-- Ensure API roles can access the table (RLS still controls row-level permissions).
+grant usage on schema public to authenticated;
+revoke all on table public.stanford_leaderboard_entries from anon, authenticated;
+grant select, insert, update, delete on table public.stanford_leaderboard_entries to authenticated;
+
 create or replace function public.is_stanford_email(email text)
 returns boolean
 language sql

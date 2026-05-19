@@ -106,6 +106,53 @@ function card(kicker, value, copy) {
   return node;
 }
 
+function normalizedFirstName(value) {
+  const name = String(value || '').trim();
+  if (!name) return '';
+  return name.split(/\s+/)[0].replace(/[^a-z'-]/gi, '').toLowerCase();
+}
+
+function displayFirstName(value) {
+  const name = String(value || '').trim();
+  if (!name) return '';
+  const first = name.split(/\s+/)[0].replace(/[^a-z'-]/gi, '');
+  return first ? first[0].toUpperCase() + first.slice(1).toLowerCase() : '';
+}
+
+function runnerForBib(event, bib) {
+  if (!Number.isFinite(bib)) return null;
+  return state.results.rows.find((r) => r.event === event && Number(r.bib) === bib)
+    || state.results.rows.find((r) => Number(r.bib) === bib)
+    || null;
+}
+
+function sameFirstNameStats(event, firstName, seconds) {
+  const normalized = normalizedFirstName(firstName);
+  if (!normalized || !Number.isFinite(seconds)) return null;
+
+  const rows = state.results.rows
+    .filter((r) => (
+      r.event === event
+      && Number.isFinite(r.chip_seconds)
+      && normalizedFirstName(r.name) === normalized
+    ))
+    .sort((a, b) => a.chip_seconds - b.chip_seconds);
+
+  if (!rows.length) return null;
+
+  const times = rows.map((r) => r.chip_seconds);
+  const faster = lowerBound(times, seconds);
+  const equalOrFaster = upperBound(times, seconds);
+  const slower = times.length - equalOrFaster;
+  return {
+    count: rows.length,
+    rank: faster + 1,
+    slower,
+    beatPct: (slower / rows.length) * 100,
+    firstName: displayFirstName(firstName),
+  };
+}
+
 function svgRunner(bibText) {
   const text = String(bibText || 'YOU').toUpperCase();
   const fs = text.length >= 5 ? 6.5 : text.length === 4 ? 8 : 9.5;
@@ -311,6 +358,9 @@ function compare() {
   const age = $('age').value;
   const ag = ageGroup(age);
   const eventMiles = state.summary.distance_miles[event];
+  const bib = Number($('bib').value);
+  const runner = runnerForBib(event, bib);
+  const firstName = $('firstName').value.trim() || (runner ? displayFirstName(runner.name) : '');
 
   let seconds = parseTime($('time').value);
   let sourceLabel = 'official chip time';
@@ -339,6 +389,15 @@ function compare() {
   $('results').hidden = false;
   $('runnerTitle').textContent = `${formatTime(seconds)} — ${descriptor(overall.beatPct)}`;
   $('runnerSubtitle').textContent = `${event} · ${sourceLabel} · ${formatPace(seconds, eventMiles)}`;
+
+  // Replay the medal earning animation on every submit.
+  const medalEl = $('scorecardMedal');
+  if (medalEl) {
+    medalEl.classList.remove('animate');
+    // Force reflow so the keyframes restart even on repeat clicks.
+    void medalEl.offsetWidth;
+    medalEl.classList.add('animate');
+  }
 
   const cards = $('cards');
   cards.innerHTML = '';
@@ -385,17 +444,25 @@ function compare() {
     `Official distance used here: ${eventMiles} miles. GPS routes can read longer or shorter.`
   ));
 
-  const bib = Number($('bib').value);
-  if (Number.isFinite(bib)) {
-    const runner = state.results.rows.find((r) => r.event === event && Number(r.bib) === bib);
-    if (runner && runner.teams && runner.teams.length) {
-      const team = runner.teams[0];
-      cards.appendChild(card(
-        'Centipede team',
-        team.team_name || 'Team result',
-        team.team_rank ? `Team rank ${team.team_rank}; team average ${team.team_avg_chip_time || '—'}.` : `Team average ${team.team_avg_chip_time || '—'}.`
-      ));
-    }
+  const nameStats = sameFirstNameStats(event, firstName, seconds);
+  if (nameStats) {
+    const sameNameCopy = nameStats.count === 1
+      ? `You were the only ${nameStats.firstName} in the public ${event} results.`
+      : `Among ${nameStats.count.toLocaleString()} ${nameStats.firstName}s in the ${event}, you beat about ${nameStats.slower.toLocaleString()} and landed in the top ${(100 - nameStats.beatPct).toFixed(1)}%.`;
+    cards.appendChild(card(
+      'Name twins',
+      nameStats.count === 1 ? `Only ${nameStats.firstName}` : `#${nameStats.rank.toLocaleString()} of ${nameStats.count.toLocaleString()}`,
+      sameNameCopy
+    ));
+  }
+
+  if (runner && runner.teams && runner.teams.length) {
+    const team = runner.teams[0];
+    cards.appendChild(card(
+      'Centipede team',
+      team.team_name || 'Team result',
+      team.team_rank ? `Team rank ${team.team_rank}; team average ${team.team_avg_chip_time || '—'}.` : `Team average ${team.team_avg_chip_time || '—'}.`
+    ));
   }
 
   const bibRaw = $('bib').value.trim();
@@ -413,8 +480,7 @@ function lookupBib() {
     return;
   }
   const event = $('event').value;
-  let row = state.results.rows.find((r) => r.event === event && Number(r.bib) === bib);
-  if (!row) row = state.results.rows.find((r) => Number(r.bib) === bib);
+  let row = runnerForBib(event, bib);
   if (!row) {
     alert('No public result found for that bib in the loaded data.');
     return;
@@ -423,6 +489,7 @@ function lookupBib() {
   $('time').value = row.chip_time || formatTime(row.chip_seconds);
   $('gender').value = row.gender || '';
   $('age').value = row.age || '';
+  $('firstName').value = displayFirstName(row.name);
   $('runnerTitle').textContent = `${row.name || 'Runner'} · Bib ${row.bib}`;
 }
 
