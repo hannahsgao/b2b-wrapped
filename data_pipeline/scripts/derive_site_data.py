@@ -100,6 +100,23 @@ def safe_float(value: Any) -> float | None:
         return None
 
 
+_NULLISH_STRINGS = {"", "nan", "none", "---", "n/a"}
+
+
+def safe_str(value: Any) -> str | None:
+    """Return a stripped string, or None for missing / sentinel values.
+
+    Survives pandas reanimating None as float('nan'), and rejects the literal
+    strings Laurel emits when a field is blank.
+    """
+    if value is None or (isinstance(value, float) and math.isnan(value)):
+        return None
+    s = str(value).strip()
+    if not s or s.lower() in _NULLISH_STRINGS:
+        return None
+    return s
+
+
 def quantiles(times: list[int]) -> dict[str, Any]:
     if not times:
         return {}
@@ -139,35 +156,37 @@ def make_group(df: pd.DataFrame, filters: dict[str, Any], label: str) -> tuple[s
 
 
 def build_groups(df: pd.DataFrame) -> dict[str, dict[str, Any]]:
+    """Build only the group families the frontend actually queries:
+    event, event+gender, event+age_group, event+gender+age_group.
+    Each carries the sorted `times` array so the browser can do exact-percentile
+    lookups via binary search.
+    """
     groups: dict[str, dict[str, Any]] = {}
     for event in sorted(df["event"].dropna().unique()):
         key, payload = make_group(df, {"event": event}, f"{event} overall")
         groups[key] = payload
 
-        for gender in sorted(df.loc[df["event"] == event, "gender"].dropna().unique()):
+        event_df = df[df["event"] == event]
+        genders = [g for g in sorted(event_df["gender"].dropna().unique()) if str(g).strip()]
+        age_groups = [ag for ag in sorted(event_df["age_group"].dropna().unique()) if ag and ag != "Unknown"]
+
+        for gender in genders:
             key, payload = make_group(df, {"event": event, "gender": gender}, f"{event} {gender}")
             groups[key] = payload
 
-        for ag in sorted(df.loc[df["event"] == event, "age_group"].dropna().unique()):
+        for ag in age_groups:
             key, payload = make_group(df, {"event": event, "age_group": ag}, f"{event} age {ag}")
             groups[key] = payload
 
-        for div in sorted(df.loc[df["event"] == event, "division"].dropna().unique()):
-            if not str(div).strip():
-                continue
-            key, payload = make_group(df, {"event": event, "division": div}, f"{event} {div}")
-            groups[key] = payload
-
-        combos = df.loc[df["event"] == event, ["gender", "age_group"]].dropna().drop_duplicates()
-        for combo in combos.itertuples(index=False):
-            gender = getattr(combo, "gender")
-            ag = getattr(combo, "age_group")
-            key, payload = make_group(
-                df,
-                {"event": event, "gender": gender, "age_group": ag},
-                f"{event} {gender} {ag}",
-            )
-            groups[key] = payload
+        for gender in genders:
+            for ag in age_groups:
+                key, payload = make_group(
+                    df,
+                    {"event": event, "gender": gender, "age_group": ag},
+                    f"{event} {gender} {ag}",
+                )
+                if payload.get("count"):
+                    groups[key] = payload
     return groups
 
 
@@ -195,10 +214,26 @@ def build_team_map(teams_path: Path | None) -> dict[str, list[dict[str, Any]]]:
     return out
 
 
+def stringify_pk(value: Any) -> str:
+    """Render Laurel result_pk as a clean integer string when possible.
+
+    Pandas reads the column as float on CSV load, so '8889243' arrives as
+    8889243.0; we drop the trailing '.0' without altering string-valued pks.
+    """
+    if value is None or (isinstance(value, float) and math.isnan(value)):
+        return ""
+    if isinstance(value, float) and value.is_integer():
+        return str(int(value))
+    s = str(value).strip()
+    if s.endswith(".0") and s[:-2].lstrip("-").isdigit():
+        return s[:-2]
+    return s
+
+
 def build_rows(df: pd.DataFrame, privacy: str, team_map: dict[str, list[dict[str, Any]]]) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     for _, row in df.sort_values(["event", "chip_seconds", "gun_seconds", "bib"], na_position="last").iterrows():
-        result_pk = str(row.get("result_pk") or "").strip()
+        result_pk = stringify_pk(row.get("result_pk"))
         chip_seconds = safe_int(row.get("chip_seconds"))
         if chip_seconds is None:
             continue
@@ -209,25 +244,42 @@ def build_rows(df: pd.DataFrame, privacy: str, team_map: dict[str, list[dict[str
                 "event": event,
                 "bib": safe_int(row.get("bib")),
                 "name": display_name(row, privacy),
-                "gender": str(row.get("gender") or "").strip() or None,
+                "gender": safe_str(row.get("gender")),
                 "age": safe_int(row.get("age")),
-                "age_group": str(row.get("age_group") or "Unknown"),
-                "division": str(row.get("division") or "").strip() or None,
+                "age_group": safe_str(row.get("age_group")) or "Unknown",
+                "division": safe_str(row.get("division")),
                 "chip_seconds": chip_seconds,
-                "chip_time": row.get("chip_time") or seconds_to_time(chip_seconds),
+                "chip_time": safe_str(row.get("chip_time")) or seconds_to_time(chip_seconds),
                 "gun_seconds": safe_int(row.get("gun_seconds")),
-                "gun_time": row.get("gun_time"),
+                "gun_time": safe_str(row.get("gun_time")),
                 "pace_seconds_per_mile": safe_int(row.get("pace_seconds_per_mile")),
-                "pace_min_mile": row.get("pace_min_mile"),
+                "pace_min_mile": safe_str(row.get("pace_min_mile")),
                 "distance_miles": distance,
                 "place_overall": safe_int(row.get("place_overall")),
                 "place_gender_rank": safe_int(row.get("place_gender_rank")),
-                "place_div": row.get("place_div"),
+                "place_div": safe_str(row.get("place_div")),
                 "result_pk": result_pk or None,
                 "teams": team_map.get(result_pk, []),
             }
         )
     return rows
+
+
+_DIV_RANK_PREFIX = re.compile(r"^\d+\s+")
+
+
+def normalize_division(value: Any) -> str:
+    """Strip the leading per-runner rank from Laurel's place_div strings.
+
+    Examples: '1965 M20-29' -> 'M20-29', '1 M Overall' -> 'M Overall'.
+    Returns '' when the input has no recognizable division.
+    """
+    if value is None or (isinstance(value, float) and math.isnan(value)):
+        return ""
+    s = str(value).strip()
+    if not s or s.lower() == "nan":
+        return ""
+    return _DIV_RANK_PREFIX.sub("", s).strip()
 
 
 def clean_results(raw: pd.DataFrame) -> pd.DataFrame:
@@ -244,13 +296,15 @@ def clean_results(raw: pd.DataFrame) -> pd.DataFrame:
     df["chip_seconds"] = df["chip_seconds"].astype(int)
     df["age_group"] = df.get("age", pd.Series([None] * len(df))).map(age_group)
 
-    # Use the Laurel division string when present; otherwise derive gender+age bucket.
-    if "place_div" in df.columns:
-        df["division"] = df["place_div"].fillna("").astype(str).str.strip()
-    else:
-        df["division"] = ""
-    missing_div = df["division"].eq("") | df["division"].str.lower().eq("nan")
-    df.loc[missing_div, "division"] = (df.loc[missing_div, "gender"].fillna("").astype(str) + df.loc[missing_div, "age_group"].astype(str)).str.strip()
+    # Laurel emits NaN as the string "nan" once it round-trips through CSV.
+    # Normalize both shapes to a real pandas NA so group keys aren't polluted.
+    if "gender" in df.columns:
+        gender = df["gender"].astype(object)
+        gender = gender.where(~gender.isna(), None)
+        gender = gender.map(lambda v: None if v is None or (isinstance(v, float) and math.isnan(v)) else str(v).strip())
+        df["gender"] = gender.map(lambda v: None if (v in (None, "", "nan", "NaN", "---")) else v)
+
+    df["division"] = df["place_div"].map(normalize_division) if "place_div" in df.columns else ""
 
     return df
 
@@ -259,7 +313,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Build static-site data from scraped B2B results")
     parser.add_argument("--results", required=True, type=Path, help="data/b2b_2026_results_raw.csv")
     parser.add_argument("--teams", type=Path, default=None, help="data/b2b_2026_teams_raw.csv")
-    parser.add_argument("--out", default=Path("public/data"), type=Path)
+    parser.add_argument("--out", default=Path("site/data"), type=Path)
     parser.add_argument("--privacy", choices=["initials", "full", "none"], default="initials")
     args = parser.parse_args()
 

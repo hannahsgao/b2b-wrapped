@@ -1,0 +1,5 @@
+{
+  "_doc": "Curated Stanford-affiliated Bay to Breakers entries. Hand-edited. Two flavors: `registered_bibs` get joined against results.min.json for official chip data; `unregistered` are self-reported (Strava/GPS) for folks who didn't sign up for the actual race. Anyone can also add themselves on the page via localStorage; those entries are private to that browser. To promote a localStorage entry to the public list, paste it into `unregistered` and commit.",
+  "registered_bibs": [],
+  "unregistered": []
+}

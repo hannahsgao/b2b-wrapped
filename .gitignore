@@ -1,0 +1,20 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Local crawl outputs — regeneratable and may contain full names.
+# The deployable, minimized data lives in site/data/ and IS tracked.
+data_pipeline/raw/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+
+# Old structure (replaced by data_pipeline/ + site/)
+b2b_wrapped_site/

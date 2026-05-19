@@ -106,6 +106,160 @@ function card(kicker, value, copy) {
   return node;
 }
 
+function svgRunner(bibText) {
+  const text = String(bibText || 'YOU').toUpperCase();
+  const fs = text.length >= 5 ? 6.5 : text.length === 4 ? 8 : 9.5;
+  return `
+    <g class="runner-figure">
+      <line x1="-14" y1="22" x2="-4" y2="22" stroke="#0A0A0A" stroke-width="2" opacity="0.35" stroke-linecap="round"/>
+      <line x1="-10" y1="30" x2="-2" y2="30" stroke="#0A0A0A" stroke-width="2" opacity="0.35" stroke-linecap="round"/>
+      <circle cx="20" cy="7" r="5.6" fill="#0A0A0A"/>
+      <path d="M 11 18 L 0 13 L -3 22"
+            stroke="#0A0A0A" stroke-width="2.8" fill="none"
+            stroke-linecap="round" stroke-linejoin="round"/>
+      <rect x="8" y="14" width="24" height="22" fill="#FF388F" stroke="#0A0A0A" stroke-width="1.4"/>
+      <text x="20" y="28" text-anchor="middle"
+            font-size="${fs}" font-weight="900" letter-spacing="0.04em" fill="#FFFFFF">${escapeHtml(text)}</text>
+      <path d="M 31 18 L 42 13 L 45 22"
+            stroke="#0A0A0A" stroke-width="2.8" fill="none"
+            stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M 13 36 L 5 46 L 0 53"
+            stroke="#0A0A0A" stroke-width="3.4" fill="none"
+            stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M 27 36 L 36 48 L 38 56"
+            stroke="#0A0A0A" stroke-width="3.4" fill="none"
+            stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+  `;
+}
+
+function renderFieldGraphic(event, seconds, stats, bibText) {
+  const root = $('fieldGraphic');
+  const cap = $('fieldGraphicCaption');
+  if (!root || !stats) return;
+
+  const times = stats.group.times;
+  const n = times.length;
+  if (!n) { root.innerHTML = ''; if (cap) cap.innerHTML = ''; return; }
+
+  let lo = times[Math.max(0, Math.floor(n * 0.005))];
+  let hi = times[Math.min(n - 1, Math.floor(n * 0.995))];
+  if (seconds < lo) lo = Math.max(0, seconds - 60);
+  if (seconds > hi) hi = seconds + 60;
+  const span = Math.max(1, hi - lo);
+
+  const bins = 56;
+  const counts = new Array(bins).fill(0);
+  for (let i = 0; i < n; i++) {
+    const t = times[i];
+    if (t < lo || t > hi) continue;
+    const idx = Math.min(bins - 1, Math.floor(((t - lo) / span) * bins));
+    counts[idx]++;
+  }
+  const maxC = Math.max(1, ...counts);
+
+  const W = 1080, H = 468;
+  const padL = 56, padR = 56;
+  const padT = 188, padB = 92;
+  const innerW = W - padL - padR;
+  const innerH = H - padT - padB;
+  const baselineY = padT + innerH;
+
+  const xForTime = (t) => padL + ((t - lo) / span) * innerW;
+  const userBin = Math.min(bins - 1, Math.max(0, Math.floor(((seconds - lo) / span) * bins)));
+  const userX = xForTime(seconds);
+  const medianSeconds = stats.group.p50_seconds;
+  const medianX = xForTime(medianSeconds);
+
+  const barW = innerW / bins;
+  let bars = '';
+  for (let i = 0; i < bins; i++) {
+    const h = Math.max(1.5, (counts[i] / maxC) * innerH);
+    const x = padL + i * barW;
+    const y = baselineY - h;
+    const isUser = i === userBin;
+    bars += `<rect class="bar${isUser ? ' user' : ''}" x="${(x + 0.6).toFixed(2)}" y="${y.toFixed(2)}" width="${(barW - 1.2).toFixed(2)}" height="${h.toFixed(2)}" fill="${isUser ? '#FF388F' : '#2EA8BD'}"/>`;
+  }
+
+  const stickerW = 232, stickerH = 96;
+  const stickerX = Math.max(padL - 12, Math.min(W - padR + 12 - stickerW, userX - stickerW / 2));
+  const stickerY = 12;
+
+  const runnerW = 46, runnerH = 56;
+  const runnerX = userX - 20;
+  const runnerY = padT - runnerH;
+
+  const medianTooClose = Math.abs(medianX - userX) < 170;
+  const medianLabelY = medianTooClose ? baselineY + 22 : padT - 14;
+  const medianLabelBoxW = 120, medianLabelBoxH = 24;
+  let medianBoxX = medianX - medianLabelBoxW / 2;
+  medianBoxX = Math.max(padL, Math.min(W - padR - medianLabelBoxW, medianBoxX));
+  const medianTextX = medianBoxX + medianLabelBoxW / 2;
+
+  const beatPct = stats.beatPct;
+  const beatPctText = beatPct.toFixed(1);
+  const slower = stats.slower;
+  const count = stats.count;
+  const rank = stats.rank;
+
+  if (cap) {
+    cap.innerHTML = `
+      <span class="pct">${beatPctText}<span style="opacity:.85">%</span></span>
+      <span>Ahead of <strong>${slower.toLocaleString()}</strong> of <strong>${count.toLocaleString()}</strong> ${escapeHtml(event)} finishers — estimated place <strong>${rank.toLocaleString()}</strong>.</span>
+    `;
+  }
+
+  root.innerHTML = `
+    <svg viewBox="0 0 ${W} ${H}" class="field-graphic-svg" role="img"
+         aria-label="Histogram of ${escapeHtml(event)} finish times with your position at ${formatTime(seconds)} highlighted">
+      <defs>
+        <pattern id="fg-grid" width="40" height="22" patternUnits="userSpaceOnUse">
+          <path d="M 40 0 L 0 0" fill="none" stroke="rgba(10,10,10,0.06)" stroke-width="1"/>
+        </pattern>
+      </defs>
+
+      <rect x="${padL}" y="${padT - 6}" width="${innerW}" height="${innerH + 6}" fill="url(#fg-grid)"/>
+
+      ${bars}
+
+      <line x1="${padL - 4}" y1="${baselineY}" x2="${W - padR + 4}" y2="${baselineY}" stroke="#0A0A0A" stroke-width="2"/>
+      <line x1="${padL}" y1="${baselineY}" x2="${padL}" y2="${baselineY + 8}" stroke="#0A0A0A" stroke-width="2"/>
+      <line x1="${W - padR}" y1="${baselineY}" x2="${W - padR}" y2="${baselineY + 8}" stroke="#0A0A0A" stroke-width="2"/>
+
+      <g class="median-marker">
+        <line x1="${medianX}" y1="${padT - 4}" x2="${medianX}" y2="${baselineY}"
+              stroke="#0A0A0A" stroke-width="1.4" stroke-dasharray="5 5" opacity="0.65"/>
+        <rect x="${medianBoxX}" y="${medianLabelY - 16}" width="${medianLabelBoxW}" height="${medianLabelBoxH}"
+              fill="#FFFFFF" stroke="#0A0A0A" stroke-width="1.2"/>
+        <text x="${medianTextX - 38}" y="${medianLabelY}" text-anchor="middle"
+              font-size="10" font-weight="800" letter-spacing="0.2em" fill="#0A0A0A">MEDIAN</text>
+        <text x="${medianTextX + 22}" y="${medianLabelY}" text-anchor="middle"
+              font-size="11" font-weight="800" font-variant-numeric="tabular-nums" fill="#0A0A0A">${escapeHtml(stats.group.p50 || formatTime(medianSeconds))}</text>
+      </g>
+
+      <line x1="${userX}" y1="${padT}" x2="${userX}" y2="${baselineY}" stroke="#E61F73" stroke-width="3"/>
+
+      <g transform="translate(${runnerX}, ${runnerY})">
+        ${svgRunner(bibText)}
+      </g>
+
+      <g transform="translate(${stickerX}, ${stickerY})">
+        <rect x="3" y="3" width="${stickerW}" height="${stickerH}" fill="#0A0A0A"/>
+        <rect x="0" y="0" width="${stickerW}" height="${stickerH}" fill="#FFD61F" stroke="#0A0A0A" stroke-width="1.6"/>
+        <line x1="14" y1="30" x2="${stickerW - 14}" y2="30" stroke="#0A0A0A" stroke-width="1"/>
+        <text x="16" y="22" font-size="11" font-weight="800" letter-spacing="0.22em" fill="#0A0A0A">YOUR FINISH</text>
+        <text x="16" y="62" font-size="28" font-weight="900" letter-spacing="-0.02em" font-variant-numeric="tabular-nums" fill="#0A0A0A">${formatTime(seconds)}</text>
+        <text x="16" y="84" font-size="10.5" font-weight="800" letter-spacing="0.14em" fill="#E61F73">TOP ${(100 - beatPct).toFixed(1)}% · #${rank.toLocaleString()}</text>
+      </g>
+
+      <text x="${padL}" y="${baselineY + 24}" font-size="12" font-weight="800" letter-spacing="0.18em" font-variant-numeric="tabular-nums" fill="#0A0A0A">${formatTime(lo)}</text>
+      <text x="${padL}" y="${baselineY + 42}" font-size="10" font-weight="700" letter-spacing="0.2em" fill="#6B6B6B">FRONT OF PACK</text>
+      <text x="${W - padR}" y="${baselineY + 24}" text-anchor="end" font-size="12" font-weight="800" letter-spacing="0.18em" font-variant-numeric="tabular-nums" fill="#0A0A0A">${formatTime(hi)}</text>
+      <text x="${W - padR}" y="${baselineY + 42}" text-anchor="end" font-size="10" font-weight="700" letter-spacing="0.2em" fill="#6B6B6B">BACK OF PACK</text>
+    </svg>
+  `;
+}
+
 function nearestRows(event, seconds, limit = 7) {
   const rows = state.results.rows.filter((r) => r.event === event && Number.isFinite(r.chip_seconds));
   return rows
@@ -244,6 +398,9 @@ function compare() {
     }
   }
 
+  const bibRaw = $('bib').value.trim();
+  const bibForGraphic = bibRaw && /^\d+$/.test(bibRaw) ? `#${bibRaw}` : 'YOU';
+  renderFieldGraphic(event, seconds, overall, bibForGraphic);
   renderNearest(event, seconds);
   window.scrollTo({ top: $('results').offsetTop - 20, behavior: 'smooth' });
 }
@@ -289,7 +446,7 @@ async function loadData() {
       .join(' · ');
     $('dataStatus').textContent = `Data loaded. ${countText}`;
   } catch (err) {
-    $('dataStatus').innerHTML = `Data not found yet. Run <code>python scripts/scrape_laurelt.py --out data</code> then <code>python scripts/derive_site_data.py --results data/b2b_2026_results_raw.csv --teams data/b2b_2026_teams_raw.csv --out public/data</code>.`;
+    $('dataStatus').innerHTML = `Data not found yet. From the repo root, run <code>./data_pipeline/refresh_site_data.sh</code> to create <code>site/data/*.json</code>.`;
   }
 }
 

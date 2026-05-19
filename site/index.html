@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Bay to Breakers 2026 Wrapped </title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&display=swap" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="grain" aria-hidden="true"></div>
+
+  <header class="masthead">
+    <div class="masthead-inner">
+      <p class="dateline">San Francisco · Sunday, May 17, 2026 </p>
+      <p class="masthead-mark">B<span>·</span>2<span>·</span>B</p>
+      <p class="dateline align-right">Race results wrapped</p>
+    </div>
+    <div class="lane-rule" aria-hidden="true"></div>
+  </header>
+
+  <main class="paper">
+
+    <section class="hero">
+      <p class="kicker">No registration? No problem.</p>
+      <h1 class="display">
+        B2B 2026<br/>
+        <em>in numbers.</em>
+      </h1>
+      <p class="lede">
+        Find out how you did against the public field — overall,
+        by gender, by age group, and the combination of the two.
+      </p>
+    </section>
+
+    <div class="lane-rule short" aria-hidden="true"></div>
+
+    <section class="form-bay" aria-labelledby="form-heading">
+      <h2 id="form-heading" class="section-heading">
+        <span class="section-num">§ I</span>
+        <span class="section-name">Enter the field</span>
+      </h2>
+
+      <div class="fields">
+
+        <div class="field span-2">
+          <label for="event">
+            <span class="field-tag">Event</span>
+            <select id="event">
+              <option value="12K">12K</option>
+              <option value="15K Breakers Bonus">15K Breakers Bonus</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="field span-2">
+          <label for="bib">
+            <span class="field-tag">Bib lookup <em>optional</em></span>
+            <div class="inline">
+              <input id="bib" inputmode="numeric" placeholder="e.g. 2815" autocomplete="off" />
+              <button id="lookup" type="button" class="ghost">Find</button>
+            </div>
+          </label>
+        </div>
+
+        <div class="field">
+          <label for="time">
+            <span class="field-tag">Finish time</span>
+            <input id="time" placeholder="HH:MM:SS or MM:SS" autocomplete="off" />
+          </label>
+        </div>
+
+        <div class="field">
+          <label for="gender">
+            <span class="field-tag">Gender</span>
+            <select id="gender">
+              <option value="">Prefer not to say</option>
+              <option value="M">M</option>
+              <option value="F">F</option>
+              <option value="N">NB</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="field">
+          <label for="age">
+            <span class="field-tag">Age</span>
+            <input id="age" inputmode="numeric" placeholder="e.g. 34" autocomplete="off" />
+          </label>
+        </div>
+
+        <details class="strava">
+          <summary>
+            <span class="summary-marker">+</span>
+            Using a Strava activity instead?
+          </summary>
+          <div class="strava-grid">
+            <div class="field">
+              <label for="stravaTime">
+                <span class="field-tag">Strava time</span>
+                <input id="stravaTime" placeholder="HH:MM:SS or MM:SS" autocomplete="off" />
+              </label>
+            </div>
+            <div class="field">
+              <label for="stravaDistance">
+                <span class="field-tag">Strava distance (mi)</span>
+                <input id="stravaDistance" inputmode="decimal" placeholder="e.g. 7.52" autocomplete="off" />
+              </label>
+            </div>
+          </div>
+          <p class="micro">
+            When Strava distance is filled in, your time is pace-normalized to the
+            official event distance. Chip time is still the cleanest comparison.
+          </p>
+        </details>
+
+      </div>
+
+      <button id="compare" class="primary" type="button">
+        <span class="primary-label">Make my wrapped</span>
+        <span class="primary-arrow" aria-hidden="true">→</span>
+      </button>
+
+      <p id="dataStatus" class="status">Loading the public field…</p>
+    </section>
+
+    <section id="results" class="results" hidden>
+
+      <div class="lane-rule" aria-hidden="true"></div>
+
+      <header class="results-head">
+        <p class="kicker">Wrapped scorecard</p>
+        <h2 id="runnerTitle" class="display medium">Your Bay to Breakers story</h2>
+        <p id="runnerSubtitle" class="lede small"></p>
+      </header>
+
+      <div id="cards" class="cards"></div>
+
+      <section class="field-graphic-section" aria-labelledby="field-heading">
+        <h3 id="field-heading" class="section-heading minor">
+          <span class="section-num">§ II</span>
+          <span class="section-name">You vs. the field</span>
+        </h3>
+        <div id="fieldGraphic" class="field-graphic"></div>
+        <p id="fieldGraphicCaption" class="field-graphic-caption"></p>
+      </section>
+
+      <section class="nearest" aria-labelledby="nearest-heading">
+        <h3 id="nearest-heading" class="section-heading minor">
+          <span class="section-num">§ III</span>
+          <span class="section-name">Finish-line neighbors</span>
+        </h3>
+        <div id="nearest"></div>
+      </section>
+
+    </section>
+
+    <div class="lane-rule" aria-hidden="true"></div>
+
+    <footer class="colophon">
+      <p class="colophon-mark">— 30 —</p>
+      <p class="micro">
+        Data scraped from public results only. Names shown as <em>First L.</em> for privacy.
+      </p>
+    </footer>
+
+  </main>
+
+  <template id="cardTemplate">
+    <article class="stat-card">
+      <header class="stat-head">
+        <p class="stat-kicker"></p>
+      </header>
+      <p class="stat-value"></p>
+      <p class="stat-copy"></p>
+    </article>
+  </template>
+
+  <script src="app.js?v=2"></script>
+</body>
+</html>
