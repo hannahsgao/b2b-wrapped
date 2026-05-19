@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&display=swap" />
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="styles.css?v=14" />
 </head>
 <body>
   <div class="grain" aria-hidden="true"></div>
@@ -24,15 +24,20 @@
   <main class="paper">
 
     <section class="hero">
-      <p class="kicker">No registration? No problem.</p>
-      <h1 class="display">
-        B2B 2026<br/>
-        <em>in numbers.</em>
-      </h1>
-      <p class="lede">
-        Find out how you did against the public field — overall,
-        by gender, by age group, and the combination of the two.
-      </p>
+      <div class="hero-text">
+        <p class="kicker">No registration? No problem.</p>
+        <h1 class="display">
+          B2B 2026<br/>
+          <em>in numbers.</em>
+        </h1>
+        <p class="lede">
+          Find out how you did against official race results — overall,
+          by gender, by age group, even by your name twins. 
+        </p>
+      </div>
+      <div class="hero-medal" aria-hidden="true">
+        <img src="wrapped/b2bmedal.png" alt="" width="544" height="1252" />
+      </div>
     </section>
 
     <div class="lane-rule short" aria-hidden="true"></div>
@@ -69,6 +74,13 @@
           <label for="time">
             <span class="field-tag">Finish time</span>
             <input id="time" placeholder="HH:MM:SS or MM:SS" autocomplete="off" />
+          </label>
+        </div>
+
+        <div class="field">
+          <label for="firstName">
+            <span class="field-tag">First name <em>optional</em></span>
+            <input id="firstName" autocomplete="given-name" placeholder="e.g. Hannah" />
           </label>
         </div>
 
@@ -131,9 +143,18 @@
       <div class="lane-rule" aria-hidden="true"></div>
 
       <header class="results-head">
-        <p class="kicker">Wrapped scorecard</p>
-        <h2 id="runnerTitle" class="display medium">Your Bay to Breakers story</h2>
-        <p id="runnerSubtitle" class="lede small"></p>
+        <div class="results-head-text">
+          <p class="kicker">Wrapped scorecard</p>
+          <h2 id="runnerTitle" class="display medium">Your Bay to Breakers story</h2>
+          <p id="runnerSubtitle" class="lede small"></p>
+        </div>
+        <div id="scorecardMedal" class="scorecard-medal" aria-hidden="true">
+          <span class="medal-halo" aria-hidden="true"></span>
+          <span class="medal-confetti" aria-hidden="true">
+            <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+          </span>
+          <img src="wrapped/b2bmedal.png" alt="" width="544" height="1252" />
+        </div>
       </header>
 
       <div id="cards" class="cards"></div>
@@ -178,6 +199,6 @@
     </article>
   </template>
 
-  <script src="app.js?v=2"></script>
+  <script src="app.js?v=3"></script>
 </body>
 </html>
