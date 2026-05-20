@@ -4,11 +4,21 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Bay to Breakers 2026 — Cardinal Edition</title>
+  <meta name="description" content="Stanford Cardinal leaderboard for Bay to Breakers 2026 with verified entry comparisons and shareable wrapped stats." />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Bay to Breakers 2026 — Cardinal Edition" />
+  <meta property="og:description" content="Stanford-only Bay to Breakers wrapped leaderboard with verified Cardinal rankings and shareable stats." />
+  <meta property="og:image" content="wrapped/b2bmedal.png" />
+  <meta property="og:image:alt" content="Bay to Breakers medal artwork" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Bay to Breakers 2026 — Cardinal Edition" />
+  <meta name="twitter:description" content="Stanford-only Bay to Breakers wrapped leaderboard with verified Cardinal rankings and shareable stats." />
+  <meta name="twitter:image" content="wrapped/b2bmedal.png" />
   <link rel="icon" href="favicon.svg" type="image/svg+xml" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&display=swap" />
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="styles.css?v=17" />
 </head>
 <body>
   <div class="grain" aria-hidden="true"></div>
@@ -193,13 +203,22 @@
       <section id="mobileSummaryWrapped" class="mobile-summary-wrapped" hidden aria-labelledby="mobile-summary-heading">
         <h3 id="mobile-summary-heading" class="section-heading minor">
           <span class="section-num">§ IV</span>
-          <span class="section-name">Summary wrapped</span>
+          <span class="section-name">Your shareable Cardinal wrapped</span>
         </h3>
         <article id="mobileSummaryCard" class="mobile-summary-card"></article>
+        <figure id="mobileSummaryImagePreview" class="mobile-summary-image" hidden>
+          <img
+            id="mobileSummaryImage"
+            class="mobile-summary-image-img"
+            alt="Your Stanford Cardinal wrapped poster, ready to save"
+            decoding="async"
+          />
+          <figcaption id="mobileSummaryImageHint" class="mobile-summary-image-hint"></figcaption>
+        </figure>
         <div class="mobile-summary-actions">
-          <button id="copyMobileSummary" class="ghost" type="button">Copy summary</button>
-          <button id="downloadMobileSummary" class="ghost" type="button">Download summary text</button>
-          <button id="downloadMobileSummaryImage" class="ghost" type="button">Download summary image</button>
+          <button id="downloadMobileSummaryImage" class="ghost primary" type="button">Save / share as image</button>
+          <button id="copyMobileSummary" class="ghost" type="button">Copy summary text</button>
+          <button id="downloadMobileSummary" class="ghost" type="button">Download as .txt</button>
         </div>
         <p id="mobileSummaryStatus" class="status" aria-live="polite"></p>
       </section>
@@ -259,6 +278,6 @@
   <script defer src="/_vercel/insights/script.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="auth-config.public.js"></script>
-  <script src="stanford.js"></script>
+  <script src="stanford.js?v=2"></script>
 </body>
 </html>
